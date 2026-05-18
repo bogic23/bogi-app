@@ -499,7 +499,12 @@ private fun AppScaffold(
                     firestore = firestore
                 )
             }
-            composable(BottomNavItem.Reflection.route) { ReflectionScreen() }
+            composable(BottomNavItem.Reflection.route) {
+                ReflectionScreen(
+                    currentUser = currentUser,
+                    firestore = firestore
+                )
+            }
             composable(BottomNavItem.Bible.route) { BibleScreen() }
             composable(BottomNavItem.Profile.route) {
                 ProfileScreen(

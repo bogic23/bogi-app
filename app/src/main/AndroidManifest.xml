@@ -6,9 +6,9 @@
 
     <application
         android:allowBackup="true"
-        android:icon="@mipmap/ic_launcher"
-        android:label="Personal Dashboard"
-        android:roundIcon="@mipmap/ic_launcher_round"
+        android:icon="@mipmap/locus_visionus"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/locus_visionus"
         android:supportsRtl="true"
         android:theme="@style/Theme.PersonalDashboard"
         tools:targetApi="36">

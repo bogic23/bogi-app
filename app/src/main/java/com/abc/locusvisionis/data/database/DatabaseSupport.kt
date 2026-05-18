@@ -42,6 +42,9 @@ interface ReflectionDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(reflection: Reflection)
+
+    @Query("DELETE FROM reflections WHERE id = :reflectionId")
+    suspend fun deleteById(reflectionId: Long)
 }
 
 @Dao
