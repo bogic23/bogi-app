@@ -25,7 +25,9 @@ import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ColorLens
+import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
@@ -61,6 +63,7 @@ import com.abc.locusvisionis.FirebaseProfileState
 import com.abc.locusvisionis.UserProfile
 import com.abc.locusvisionis.toProfileState
 import com.abc.locusvisionis.ui.theme.DashboardTheme
+import com.abc.locusvisionis.ui.theme.ThemeMode
 import com.abc.locusvisionis.ui.theme.ThemeOption
 import com.google.firebase.auth.FirebaseUser
 
@@ -75,7 +78,9 @@ fun ProfileScreen(
     user: FirebaseUser?,
     profile: UserProfile?,
     selectedTheme: ThemeOption,
+    selectedThemeMode: ThemeMode,
     onThemeChange: (ThemeOption) -> Unit,
+    onThemeModeChange: (ThemeMode) -> Unit,
     profileSaving: Boolean,
     verificationSending: Boolean,
     passwordUpdating: Boolean,
@@ -213,7 +218,9 @@ fun ProfileScreen(
 
         ThemeSelectorCard(
             selectedTheme = selectedTheme,
-            onThemeChange = onThemeChange
+            selectedThemeMode = selectedThemeMode,
+            onThemeChange = onThemeChange,
+            onThemeModeChange = onThemeModeChange
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -475,7 +482,9 @@ private fun ProfileInputField(
 @Composable
 fun ThemeSelectorCard(
     selectedTheme: ThemeOption,
-    onThemeChange: (ThemeOption) -> Unit
+    selectedThemeMode: ThemeMode,
+    onThemeChange: (ThemeOption) -> Unit,
+    onThemeModeChange: (ThemeMode) -> Unit
 ) {
     val appColors = DashboardTheme.colors
     val scrollState = rememberScrollState()
@@ -496,13 +505,13 @@ fun ThemeSelectorCard(
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
                     Text(
-                        text = "Theme Color",
+                        text = "Theme Style",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = appColors.textPrimary
                     )
                     Text(
-                        text = "Default is cyan and white. Tap to switch accents.",
+                        text = "Switch light or dark mode, then choose your accent color.",
                         style = MaterialTheme.typography.bodySmall,
                         color = appColors.textSecondary
                     )
@@ -510,6 +519,39 @@ fun ThemeSelectorCard(
             }
 
             Spacer(modifier = Modifier.height(16.dp))
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(scrollState),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                ThemeMode.entries.forEach { mode ->
+                    FilterChip(
+                        selected = selectedThemeMode == mode,
+                        onClick = { onThemeModeChange(mode) },
+                        label = { Text(mode.displayName) },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = if (mode == ThemeMode.Dark) {
+                                    Icons.Default.DarkMode
+                                } else {
+                                    Icons.Default.LightMode
+                                },
+                                contentDescription = null,
+                                modifier = Modifier.size(FilterChipDefaults.IconSize)
+                            )
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = appColors.primary.copy(alpha = 0.16f),
+                            selectedLabelColor = appColors.primary,
+                            selectedLeadingIconColor = appColors.primary
+                        )
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
 
             Row(
                 modifier = Modifier

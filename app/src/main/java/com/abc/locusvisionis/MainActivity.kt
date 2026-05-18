@@ -5,10 +5,33 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.DragIndicator
+import androidx.compose.material.icons.filled.LightMode
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -22,11 +45,16 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
@@ -43,6 +71,7 @@ import com.abc.locusvisionis.ui.screens.ProfileScreen
 import com.abc.locusvisionis.ui.screens.ReflectionScreen
 import com.abc.locusvisionis.ui.theme.DashboardTheme
 import com.abc.locusvisionis.ui.theme.PersonalDashboardTheme
+import com.abc.locusvisionis.ui.theme.ThemeMode
 import com.abc.locusvisionis.ui.theme.ThemeOption
 import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
@@ -55,17 +84,24 @@ import com.google.firebase.firestore.SetOptions
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.math.roundToInt
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             var themeOption by rememberSaveable { mutableStateOf(ThemeOption.Cyan) }
+            var themeMode by rememberSaveable { mutableStateOf(ThemeMode.Light) }
 
-            PersonalDashboardTheme(themeOption = themeOption) {
+            PersonalDashboardTheme(
+                themeOption = themeOption,
+                themeMode = themeMode
+            ) {
                 MainApp(
                     themeOption = themeOption,
-                    onThemeChange = { themeOption = it }
+                    themeMode = themeMode,
+                    onThemeChange = { themeOption = it },
+                    onThemeModeChange = { themeMode = it }
                 )
             }
         }
@@ -75,7 +111,9 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainApp(
     themeOption: ThemeOption,
-    onThemeChange: (ThemeOption) -> Unit
+    themeMode: ThemeMode,
+    onThemeChange: (ThemeOption) -> Unit,
+    onThemeModeChange: (ThemeMode) -> Unit
 ) {
     val context = LocalContext.current
     val appColors = DashboardTheme.colors
@@ -95,11 +133,39 @@ fun MainApp(
     var verificationSending by remember { mutableStateOf(false) }
     var passwordUpdating by remember { mutableStateOf(false) }
 
-    fun refreshUserState() {
-        firebaseAuth.currentUser?.reload()
-            ?.addOnCompleteListener {
-                currentUser = firebaseAuth.currentUser
+    fun syncVerificationState(
+        user: FirebaseUser,
+        onComplete: (() -> Unit)? = null
+    ) {
+        val payload = hashMapOf(
+            "emailVerified" to user.isEmailVerified,
+            "email" to (user.email ?: "")
+        )
+
+        firestore.collection("users")
+            .document(user.uid)
+            .set(payload, SetOptions.merge())
+            .addOnCompleteListener { onComplete?.invoke() }
+    }
+
+    fun refreshUserState(onComplete: (() -> Unit)? = null) {
+        val user = firebaseAuth.currentUser
+        if (user == null) {
+            currentUser = null
+            onComplete?.invoke()
+            return
+        }
+
+        user.reload().addOnCompleteListener {
+            val refreshedUser = firebaseAuth.currentUser
+            currentUser = refreshedUser
+
+            if (refreshedUser == null) {
+                onComplete?.invoke()
+            } else {
+                syncVerificationState(refreshedUser, onComplete)
             }
+        }
     }
 
     fun reloadProfile() {
@@ -220,8 +286,9 @@ fun MainApp(
                                                 authError = null
                                                 password = ""
                                                 confirmPassword = ""
-                                                refreshUserState()
-                                                reloadProfile()
+                                                refreshUserState {
+                                                    reloadProfile()
+                                                }
                                             },
                                             onError = { message ->
                                                 authLoading = false
@@ -253,8 +320,9 @@ fun MainApp(
                                                     authError = null
                                                     password = ""
                                                     confirmPassword = ""
-                                                    refreshUserState()
-                                                    reloadProfile()
+                                                    refreshUserState {
+                                                        reloadProfile()
+                                                    }
                                                 },
                                                 onError = { message ->
                                                     authLoading = false
@@ -277,7 +345,9 @@ fun MainApp(
         else -> {
             AppScaffold(
                 themeOption = themeOption,
+                themeMode = themeMode,
                 onThemeChange = onThemeChange,
+                onThemeModeChange = onThemeModeChange,
                 currentUser = currentUser,
                 firestore = firestore,
                 profileDoc = profileDoc,
@@ -312,9 +382,10 @@ fun MainApp(
                             .set(payload, SetOptions.merge())
                             .addOnSuccessListener {
                                 profileSaving = false
-                                refreshUserState()
-                                reloadProfile()
-                                Toast.makeText(context, "Profile updated.", Toast.LENGTH_SHORT).show()
+                                refreshUserState {
+                                    reloadProfile()
+                                    Toast.makeText(context, "Profile updated.", Toast.LENGTH_SHORT).show()
+                                }
                             }
                             .addOnFailureListener { error ->
                                 profileSaving = false
@@ -337,8 +408,9 @@ fun MainApp(
                                 "Verification email sent to ${user.email.orEmpty()}",
                                 Toast.LENGTH_LONG
                             ).show()
-                            refreshUserState()
-                            reloadProfile()
+                            refreshUserState {
+                                reloadProfile()
+                            }
                         }
                         .addOnFailureListener { error ->
                             verificationSending = false
@@ -350,9 +422,10 @@ fun MainApp(
                         }
                 },
                 onRefreshVerification = {
-                    refreshUserState()
-                    reloadProfile()
-                    Toast.makeText(context, "Verification status refreshed.", Toast.LENGTH_SHORT).show()
+                    refreshUserState {
+                        reloadProfile()
+                        Toast.makeText(context, "Verification status refreshed.", Toast.LENGTH_SHORT).show()
+                    }
                 },
                 onChangePassword = { currentPasswordValue, newPasswordValue ->
                     val user = firebaseAuth.currentUser ?: return@AppScaffold
@@ -418,7 +491,9 @@ fun MainApp(
 @Composable
 private fun AppScaffold(
     themeOption: ThemeOption,
+    themeMode: ThemeMode,
     onThemeChange: (ThemeOption) -> Unit,
+    onThemeModeChange: (ThemeMode) -> Unit,
     currentUser: FirebaseUser?,
     firestore: FirebaseFirestore,
     profileDoc: UserProfile?,
@@ -437,6 +512,7 @@ private fun AppScaffold(
     val appColors = DashboardTheme.colors
 
     Scaffold(
+        containerColor = appColors.background,
         bottomBar = {
             NavigationBar(
                 containerColor = appColors.surface,
@@ -487,44 +563,215 @@ private fun AppScaffold(
             }
         }
     ) { paddingValues ->
-        NavHost(
-            navController = navController,
-            startDestination = BottomNavItem.Home.route,
-            modifier = Modifier.padding(paddingValues)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(appColors.background)
+                .padding(paddingValues)
         ) {
-            composable(BottomNavItem.Home.route) { HomeScreen() }
-            composable(BottomNavItem.MoneyManager.route) {
-                MoneyManagerScreen(
-                    currentUser = currentUser,
-                    firestore = firestore
-                )
+            NavHost(
+                navController = navController,
+                startDestination = BottomNavItem.Home.route,
+                modifier = Modifier.fillMaxSize()
+            ) {
+                composable(BottomNavItem.Home.route) {
+                    HomeScreen(
+                        currentUser = currentUser,
+                        firestore = firestore
+                    )
+                }
+                composable(BottomNavItem.MoneyManager.route) {
+                    MoneyManagerScreen(
+                        currentUser = currentUser,
+                        firestore = firestore
+                    )
+                }
+                composable(BottomNavItem.Reflection.route) {
+                    ReflectionScreen(
+                        currentUser = currentUser,
+                        firestore = firestore
+                    )
+                }
+                composable(BottomNavItem.Bible.route) { BibleScreen() }
+                composable(BottomNavItem.Profile.route) {
+                    ProfileScreen(
+                        user = currentUser,
+                        profile = profileDoc,
+                        selectedTheme = themeOption,
+                        selectedThemeMode = themeMode,
+                        onThemeChange = onThemeChange,
+                        onThemeModeChange = onThemeModeChange,
+                        profileSaving = profileSaving,
+                        verificationSending = verificationSending,
+                        passwordUpdating = passwordUpdating,
+                        onSaveProfile = onSaveProfile,
+                        onSendVerificationEmail = onSendVerificationEmail,
+                        onRefreshVerification = onRefreshVerification,
+                        onChangePassword = onChangePassword,
+                        onSignOut = onSignOut
+                    )
+                }
             }
-            composable(BottomNavItem.Reflection.route) {
-                ReflectionScreen(
-                    currentUser = currentUser,
-                    firestore = firestore
-                )
+
+            DraggableThemeButton(
+                selectedTheme = themeOption,
+                selectedThemeMode = themeMode,
+                onThemeChange = onThemeChange,
+                onThemeModeChange = onThemeModeChange,
+                modifier = Modifier.align(Alignment.BottomEnd)
+            )
+        }
+    }
+}
+
+@Composable
+private fun DraggableThemeButton(
+    selectedTheme: ThemeOption,
+    selectedThemeMode: ThemeMode,
+    onThemeChange: (ThemeOption) -> Unit,
+    onThemeModeChange: (ThemeMode) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val appColors = DashboardTheme.colors
+    var isExpanded by rememberSaveable { mutableStateOf(false) }
+    var dragOffset by rememberSaveable(stateSaver = OffsetSaver) { mutableStateOf(Offset.Zero) }
+
+    Box(modifier = modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .offset {
+                    IntOffset(
+                        x = dragOffset.x.roundToInt(),
+                        y = dragOffset.y.roundToInt()
+                    )
+                }
+                .pointerInput(Unit) {
+                    detectDragGestures { change, dragAmount ->
+                        change.consume()
+                        dragOffset = Offset(
+                            dragOffset.x + dragAmount.x,
+                            dragOffset.y + dragAmount.y
+                        )
+                    }
+                }
+                .padding(20.dp),
+            horizontalAlignment = Alignment.End
+        ) {
+            if (isExpanded) {
+                Card(
+                    modifier = Modifier
+                        .widthIn(max = 280.dp)
+                        .padding(bottom = 12.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = appColors.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.DragIndicator,
+                                contentDescription = null,
+                                tint = appColors.textSecondary
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Theme Switcher",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = appColors.textPrimary
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        Text(
+                            text = "Mode",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = appColors.textSecondary
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(10.dp)) {
+                            ThemeMode.entries.forEach { mode ->
+                                FilterChip(
+                                    selected = selectedThemeMode == mode,
+                                    onClick = { onThemeModeChange(mode) },
+                                    label = { Text(mode.displayName) },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = if (mode == ThemeMode.Dark) {
+                                                Icons.Default.DarkMode
+                                            } else {
+                                                Icons.Default.LightMode
+                                            },
+                                            contentDescription = null,
+                                            modifier = Modifier.size(FilterChipDefaults.IconSize)
+                                        )
+                                    },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = appColors.primary.copy(alpha = 0.18f),
+                                        selectedLabelColor = appColors.primary,
+                                        selectedLeadingIconColor = appColors.primary
+                                    )
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        Text(
+                            text = "Color",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = appColors.textSecondary
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(10.dp)) {
+                            ThemeOption.entries.forEach { option ->
+                                FilterChip(
+                                    selected = selectedTheme == option,
+                                    onClick = { onThemeChange(option) },
+                                    label = { Text(option.displayName) },
+                                    leadingIcon = if (selectedTheme == option) {
+                                        {
+                                            Icon(
+                                                imageVector = Icons.Default.Check,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(FilterChipDefaults.IconSize)
+                                            )
+                                        }
+                                    } else {
+                                        null
+                                    },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = appColors.primary.copy(alpha = 0.18f),
+                                        selectedLabelColor = appColors.primary,
+                                        selectedLeadingIconColor = appColors.primary
+                                    )
+                                )
+                            }
+                        }
+                    }
+                }
             }
-            composable(BottomNavItem.Bible.route) { BibleScreen() }
-            composable(BottomNavItem.Profile.route) {
-                ProfileScreen(
-                    user = currentUser,
-                    profile = profileDoc,
-                    selectedTheme = themeOption,
-                    onThemeChange = onThemeChange,
-                    profileSaving = profileSaving,
-                    verificationSending = verificationSending,
-                    passwordUpdating = passwordUpdating,
-                    onSaveProfile = onSaveProfile,
-                    onSendVerificationEmail = onSendVerificationEmail,
-                    onRefreshVerification = onRefreshVerification,
-                    onChangePassword = onChangePassword,
-                    onSignOut = onSignOut
+
+            FloatingActionButton(
+                onClick = { isExpanded = !isExpanded },
+                containerColor = appColors.primary,
+                contentColor = if (selectedThemeMode == ThemeMode.Dark) appColors.background else Color.White,
+                shape = CircleShape
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Palette,
+                    contentDescription = "Toggle theme controls"
                 )
             }
         }
     }
 }
+
+private val OffsetSaver = Saver<Offset, List<Float>>(
+    save = { listOf(it.x, it.y) },
+    restore = { saved -> Offset(saved[0], saved[1]) }
+)
 
 data class UserProfile(
     val uid: String,

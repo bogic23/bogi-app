@@ -9,6 +9,11 @@ enum class ThemeOption(val displayName: String) {
     Mint("Mint")
 }
 
+enum class ThemeMode(val displayName: String) {
+    Light("Light"),
+    Dark("Dark")
+}
+
 @Immutable
 data class DashboardColors(
     val primary: Color,
@@ -90,8 +95,75 @@ val MintDashboardColors = DashboardColors(
     gradientEnd = Color(0xFFA5F3FC)
 )
 
-fun dashboardColorsFor(option: ThemeOption): DashboardColors = when (option) {
-    ThemeOption.Cyan -> CyanDashboardColors
-    ThemeOption.Ocean -> OceanDashboardColors
-    ThemeOption.Mint -> MintDashboardColors
+val CyanDarkDashboardColors = DashboardColors(
+    primary = Color(0xFF55E7F7),
+    primaryVariant = Color(0xFF22D3EE),
+    secondary = Color(0xFF67E8F9),
+    secondaryVariant = Color(0xFF0891B2),
+    background = Color(0xFF071A1F),
+    surface = Color(0xFF10272D),
+    cardBackground = Color(0xFF14343C),
+    accentGold = Color(0xFFFFD166),
+    accentGreen = Color(0xFF34D399),
+    accentRed = Color(0xFFFB7185),
+    accentOrange = Color(0xFFFB923C),
+    accentPurple = Color(0xFFA78BFA),
+    textPrimary = Color(0xFFE6FBFF),
+    textSecondary = Color(0xFF9CCBD3),
+    textLight = Color(0xFF6E97A0),
+    gradientStart = Color(0xFF0F3C47),
+    gradientEnd = Color(0xFF126B7A)
+)
+
+val OceanDarkDashboardColors = DashboardColors(
+    primary = Color(0xFF3DD9EB),
+    primaryVariant = Color(0xFF22C7DA),
+    secondary = Color(0xFF8AE8F1),
+    secondaryVariant = Color(0xFF0E7490),
+    background = Color(0xFF08171C),
+    surface = Color(0xFF10242B),
+    cardBackground = Color(0xFF17313A),
+    accentGold = Color(0xFFFFD166),
+    accentGreen = Color(0xFF34D399),
+    accentRed = Color(0xFFF87171),
+    accentOrange = Color(0xFFFB923C),
+    accentPurple = Color(0xFF93A4FF),
+    textPrimary = Color(0xFFE7FBFF),
+    textSecondary = Color(0xFFA1CBD3),
+    textLight = Color(0xFF6F97A1),
+    gradientStart = Color(0xFF103640),
+    gradientEnd = Color(0xFF116072)
+)
+
+val MintDarkDashboardColors = DashboardColors(
+    primary = Color(0xFF54E7DD),
+    primaryVariant = Color(0xFF2DD4BF),
+    secondary = Color(0xFFA7F3D0),
+    secondaryVariant = Color(0xFF0F766E),
+    background = Color(0xFF071917),
+    surface = Color(0xFF112826),
+    cardBackground = Color(0xFF183533),
+    accentGold = Color(0xFFFACC15),
+    accentGreen = Color(0xFF4ADE80),
+    accentRed = Color(0xFFFB7185),
+    accentOrange = Color(0xFFFB923C),
+    accentPurple = Color(0xFF9DA8FF),
+    textPrimary = Color(0xFFEBFFFC),
+    textSecondary = Color(0xFFA7CDC8),
+    textLight = Color(0xFF739992),
+    gradientStart = Color(0xFF10413C),
+    gradientEnd = Color(0xFF146B63)
+)
+
+fun dashboardColorsFor(option: ThemeOption, mode: ThemeMode): DashboardColors = when (mode) {
+    ThemeMode.Light -> when (option) {
+        ThemeOption.Cyan -> CyanDashboardColors
+        ThemeOption.Ocean -> OceanDashboardColors
+        ThemeOption.Mint -> MintDashboardColors
+    }
+    ThemeMode.Dark -> when (option) {
+        ThemeOption.Cyan -> CyanDarkDashboardColors
+        ThemeOption.Ocean -> OceanDarkDashboardColors
+        ThemeOption.Mint -> MintDarkDashboardColors
+    }
 }

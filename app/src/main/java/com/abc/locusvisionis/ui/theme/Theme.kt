@@ -2,6 +2,7 @@ package com.abc.locusvisionis.ui.theme
 
 import android.app.Activity
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -24,29 +25,47 @@ object DashboardTheme {
 @Composable
 fun PersonalDashboardTheme(
     themeOption: ThemeOption = ThemeOption.Cyan,
+    themeMode: ThemeMode = ThemeMode.Light,
     content: @Composable () -> Unit
 ) {
-    val dashboardColors = dashboardColorsFor(themeOption)
-    val colorScheme = lightColorScheme(
-        primary = dashboardColors.primary,
-        secondary = dashboardColors.secondary,
-        tertiary = dashboardColors.accentPurple,
-        background = dashboardColors.background,
-        surface = dashboardColors.surface,
-        surfaceVariant = dashboardColors.cardBackground,
-        onPrimary = dashboardColors.surface,
-        onSecondary = dashboardColors.textPrimary,
-        onTertiary = dashboardColors.surface,
-        onBackground = dashboardColors.textPrimary,
-        onSurface = dashboardColors.textPrimary
-    )
+    val dashboardColors = dashboardColorsFor(themeOption, themeMode)
+    val colorScheme = if (themeMode == ThemeMode.Dark) {
+        darkColorScheme(
+            primary = dashboardColors.primary,
+            secondary = dashboardColors.secondary,
+            tertiary = dashboardColors.accentPurple,
+            background = dashboardColors.background,
+            surface = dashboardColors.surface,
+            surfaceVariant = dashboardColors.cardBackground,
+            onPrimary = dashboardColors.background,
+            onSecondary = dashboardColors.background,
+            onTertiary = dashboardColors.background,
+            onBackground = dashboardColors.textPrimary,
+            onSurface = dashboardColors.textPrimary
+        )
+    } else {
+        lightColorScheme(
+            primary = dashboardColors.primary,
+            secondary = dashboardColors.secondary,
+            tertiary = dashboardColors.accentPurple,
+            background = dashboardColors.background,
+            surface = dashboardColors.surface,
+            surfaceVariant = dashboardColors.cardBackground,
+            onPrimary = dashboardColors.surface,
+            onSecondary = dashboardColors.textPrimary,
+            onTertiary = dashboardColors.surface,
+            onBackground = dashboardColors.textPrimary,
+            onSurface = dashboardColors.textPrimary
+        )
+    }
     val view = LocalView.current
 
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
             window.statusBarColor = dashboardColors.primary.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars =
+                themeMode == ThemeMode.Light
         }
     }
 
