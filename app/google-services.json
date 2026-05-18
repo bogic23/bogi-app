@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "53499743947",
+    "project_id": "locus-visionis",
+    "storage_bucket": "locus-visionis.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:53499743947:android:ed8b71d458898c80fd154e",
+        "android_client_info": {
+          "package_name": "com.abc.locusvisionis"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "53499743947-q9n5g0r128prrq3fjoedq5fl53fisurn.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCNQJi1CVP08Vs1VZiXgzs0G-a71cd1D_A"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "53499743947-q9n5g0r128prrq3fjoedq5fl53fisurn.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
