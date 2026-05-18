@@ -1,4 +1,4 @@
-package com.abc.personaldashboard
+package com.abc.locusvisionis
 
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -19,6 +19,6 @@ class ExampleInstrumentedTest {
     fun useAppContext() {
         // Context of the app under test.
         val appContext = InstrumentationRegistry.getInstrumentation().targetContext
-        assertEquals("com.abc.personaldashboard", appContext.packageName)
+        assertEquals("com.abc.locusvisionis", appContext.packageName)
     }
 }
