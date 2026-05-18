@@ -6,6 +6,8 @@ import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.QuerySnapshot
 import com.google.firebase.firestore.SetOptions
+import java.text.NumberFormat
+import java.util.Locale
 
 enum class MoneyEntryType {
     INCOME,
@@ -205,6 +207,8 @@ class MoneyManagerRepository(
     ) {
         val walletRef = firestore.collection(WALLETS_COLLECTION).document(walletId)
         val transactionRef = firestore.collection(TRANSACTIONS_COLLECTION).document()
+        var walletNameForNotification = ""
+        var recipientUidsForNotification: List<String> = emptyList()
 
         firestore.runTransaction { transaction ->
             val walletSnapshot = transaction.get(walletRef)
@@ -222,6 +226,10 @@ class MoneyManagerRepository(
             val walletName = walletSnapshot.getString("name").orEmpty()
             val currentBalance = walletSnapshot.getDouble("balance") ?: 0.0
             val balanceDelta = if (type == MoneyEntryType.INCOME) amount else -amount
+            walletNameForNotification = walletName
+            recipientUidsForNotification = (listOf(ownerUid) + sharedWith)
+                .distinct()
+                .filter { it.isNotBlank() && it != userUid }
 
             transaction.set(
                 transactionRef,
@@ -248,10 +256,59 @@ class MoneyManagerRepository(
                 SetOptions.merge()
             )
         }.addOnSuccessListener {
+            createWalletActivityNotifications(
+                recipientUids = recipientUidsForNotification,
+                walletId = walletId,
+                walletName = walletNameForNotification,
+                transactionId = transactionRef.id,
+                amount = amount,
+                description = description,
+                type = type,
+                createdByUid = userUid
+            )
             onSuccess()
         }.addOnFailureListener { error ->
             onError(error.localizedMessage ?: "Could not save transaction.")
         }
+    }
+
+    private fun createWalletActivityNotifications(
+        recipientUids: List<String>,
+        walletId: String,
+        walletName: String,
+        transactionId: String,
+        amount: Double,
+        description: String,
+        type: MoneyEntryType,
+        createdByUid: String
+    ) {
+        if (recipientUids.isEmpty()) return
+
+        val actionLabel = if (type == MoneyEntryType.INCOME) "Income added" else "Expense added"
+        val detail = description.ifBlank { "No description" }
+        val body = "${amount.asNotificationCurrency()} • $detail • $walletName"
+        val notifications = firestore.collection(AppNotificationRepository.NOTIFICATIONS_COLLECTION)
+        val batch = firestore.batch()
+
+        recipientUids.forEach { recipientUid ->
+            val notificationRef = notifications.document()
+            batch.set(
+                notificationRef,
+                mapOf(
+                    "recipientUid" to recipientUid,
+                    "title" to actionLabel,
+                    "body" to body,
+                    "walletId" to walletId,
+                    "transactionId" to transactionId,
+                    "type" to type.name,
+                    "createdByUid" to createdByUid,
+                    "delivered" to false,
+                    "createdAt" to FieldValue.serverTimestamp()
+                )
+            )
+        }
+
+        batch.commit()
     }
 
     fun shareWallet(
@@ -397,4 +454,12 @@ class MoneyManagerRepository(
         private const val WALLETS_COLLECTION = "wallets"
         private const val TRANSACTIONS_COLLECTION = "transactions"
     }
+}
+
+private fun Double.asNotificationCurrency(): String {
+    val locale = Locale.Builder()
+        .setLanguage("id")
+        .setRegion("ID")
+        .build()
+    return NumberFormat.getCurrencyInstance(locale).format(this)
 }

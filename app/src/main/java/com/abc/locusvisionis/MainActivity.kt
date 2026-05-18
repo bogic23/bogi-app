@@ -69,6 +69,7 @@ import com.abc.locusvisionis.ui.screens.HomeScreen
 import com.abc.locusvisionis.ui.screens.MoneyManagerScreen
 import com.abc.locusvisionis.ui.screens.ProfileScreen
 import com.abc.locusvisionis.ui.screens.ReflectionScreen
+import com.abc.locusvisionis.data.firebase.AppNotificationRepository
 import com.abc.locusvisionis.ui.theme.DashboardTheme
 import com.abc.locusvisionis.ui.theme.PersonalDashboardTheme
 import com.abc.locusvisionis.ui.theme.ThemeMode
@@ -89,6 +90,8 @@ import kotlin.math.roundToInt
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        ensureFinanceNotificationChannel()
+        requestNotificationPermissionIfNeeded()
         setContent {
             var themeOption by rememberSaveable { mutableStateOf(ThemeOption.Cyan) }
             var themeMode by rememberSaveable { mutableStateOf(ThemeMode.Light) }
@@ -119,6 +122,7 @@ fun MainApp(
     val appColors = DashboardTheme.colors
     val firebaseAuth = remember { FirebaseAuth.getInstance() }
     val firestore = remember { FirebaseFirestore.getInstance() }
+    val notificationRepository = remember { AppNotificationRepository(firestore) }
 
     var currentUser by remember { mutableStateOf(firebaseAuth.currentUser) }
     var authLoading by remember { mutableStateOf(true) }
@@ -207,6 +211,26 @@ fun MainApp(
 
     LaunchedEffect(currentUser?.uid) {
         reloadProfile()
+    }
+
+    DisposableEffect(currentUser?.uid) {
+        val activeUid = currentUser?.uid
+        if (activeUid.isNullOrBlank()) {
+            onDispose { }
+        } else {
+            val registration = notificationRepository.observePendingNotifications(
+                userUid = activeUid,
+                onNotification = { notification ->
+                    context.showFinanceNotification(notification)
+                    notificationRepository.markAsDelivered(notification.id)
+                },
+                onError = { message ->
+                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                }
+            )
+
+            onDispose { registration.remove() }
+        }
     }
 
     when {
