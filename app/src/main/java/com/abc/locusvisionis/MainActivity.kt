@@ -213,6 +213,12 @@ fun MainApp(
         reloadProfile()
     }
 
+    LaunchedEffect(currentUser?.uid) {
+        currentUser?.uid?.let { activeUid ->
+            context.syncFcmTokenForUser(activeUid)
+        }
+    }
+
     DisposableEffect(currentUser?.uid) {
         val activeUid = currentUser?.uid
         if (activeUid.isNullOrBlank()) {
@@ -221,8 +227,10 @@ fun MainApp(
             val registration = notificationRepository.observePendingNotifications(
                 userUid = activeUid,
                 onNotification = { notification ->
-                    context.showFinanceNotification(notification)
-                    notificationRepository.markAsDelivered(notification.id)
+                    if (context.isAppInForeground()) {
+                        context.showFinanceNotification(notification)
+                        notificationRepository.markAsDelivered(notification.id)
+                    }
                 },
                 onError = { message ->
                     Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
@@ -498,6 +506,9 @@ fun MainApp(
                         }
                 },
                 onSignOut = {
+                    firebaseAuth.currentUser?.uid?.let { activeUid ->
+                        context.unregisterFcmTokenForUser(activeUid)
+                    }
                     firebaseAuth.signOut()
                     profileDoc = null
                     authLoading = false

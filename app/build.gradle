@@ -45,6 +45,7 @@ android {
 dependencies {
     implementation libs.androidx.core.ktx
     implementation libs.androidx.lifecycle.runtime.ktx
+    implementation libs.androidx.lifecycle.process
     implementation libs.androidx.activity.compose
     implementation platform(libs.androidx.compose.bom)
     implementation libs.androidx.compose.ui
@@ -60,6 +61,8 @@ dependencies {
     implementation libs.firebase.analytics
     implementation libs.firebase.auth
     implementation libs.firebase.firestore
+    implementation libs.firebase.messaging
+    implementation libs.firebase.messaging.ktx
     ksp 'androidx.room:room-compiler:2.7.2'
 
     testImplementation libs.junit
