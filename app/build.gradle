@@ -62,7 +62,6 @@ dependencies {
     implementation libs.firebase.auth
     implementation libs.firebase.firestore
     implementation libs.firebase.messaging
-    implementation libs.firebase.messaging.ktx
     ksp 'androidx.room:room-compiler:2.7.2'
 
     testImplementation libs.junit

@@ -54,6 +54,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -764,7 +765,14 @@ private fun DraggableThemeButton(
                                 FilterChip(
                                     selected = selectedTheme == option,
                                     onClick = { onThemeChange(option) },
-                                    label = { Text(option.displayName) },
+                                    label = {
+                                        Text(
+                                            text = option.displayName,
+                                            maxLines = 1,
+                                            softWrap = false,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    },
                                     leadingIcon = if (selectedTheme == option) {
                                         {
                                             Icon(

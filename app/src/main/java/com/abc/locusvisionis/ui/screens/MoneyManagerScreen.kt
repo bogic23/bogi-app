@@ -50,6 +50,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.abc.locusvisionis.data.firebase.MoneyDashboardState
 import com.abc.locusvisionis.data.firebase.MoneyEntryType
@@ -156,35 +157,31 @@ fun MoneyManagerScreen(
 
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             ActionButton(
+                modifier = Modifier.weight(1f),
                 icon = Icons.Default.Add,
                 label = "Add Income",
                 color = appColors.accentGreen,
                 onClick = { entryDialogType = MoneyEntryType.INCOME }
             )
             ActionButton(
+                modifier = Modifier.weight(1f),
                 icon = Icons.Default.Remove,
                 label = "Add Expense",
                 color = appColors.accentRed,
                 onClick = { entryDialogType = MoneyEntryType.EXPENSE }
             )
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
             ActionButton(
+                modifier = Modifier.weight(1f),
                 icon = Icons.Default.AccountBalanceWallet,
                 label = "Add Wallet",
                 color = appColors.primary,
                 onClick = { showCreateWalletDialog = true }
             )
             ActionButton(
+                modifier = Modifier.weight(1f),
                 icon = Icons.Default.Edit,
                 label = "Edit Balance",
                 color = appColors.secondary,
@@ -293,9 +290,11 @@ fun MoneyManagerScreen(
 
     val currentUid = currentUser?.uid
     if (entryDialogType != null && !currentUid.isNullOrBlank()) {
+        val categorySuggestions = dashboardState.transactions.categorySuggestionsFor(entryDialogType!!)
         AddTransactionDialog(
             type = entryDialogType!!,
             wallets = dashboardState.wallets,
+            categorySuggestions = categorySuggestions,
             isSubmitting = isSubmitting,
             onDismiss = { entryDialogType = null },
             onSubmit = { walletId, amount, description, category ->
@@ -445,6 +444,7 @@ private fun SummaryColumn(title: String, value: String) {
 
 @Composable
 fun ActionButton(
+    modifier: Modifier = Modifier,
     icon: ImageVector,
     label: String,
     color: Color,
@@ -453,29 +453,32 @@ fun ActionButton(
     val appColors = DashboardTheme.colors
 
     Card(
-        modifier = Modifier
+        modifier = modifier
             .clickable(onClick = onClick)
-            .padding(8.dp),
+            .padding(vertical = 4.dp),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = appColors.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
-            modifier = Modifier.padding(20.dp),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 12.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
                 tint = color,
-                modifier = Modifier.size(32.dp)
+                modifier = Modifier.size(22.dp)
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(6.dp))
             Text(
                 text = label,
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodySmall,
                 fontWeight = FontWeight.Medium,
-                color = appColors.textPrimary
+                color = appColors.textPrimary,
+                maxLines = 1,
+                softWrap = false,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }
@@ -672,6 +675,7 @@ private fun EmptyStateCard(
 private fun AddTransactionDialog(
     type: MoneyEntryType,
     wallets: List<WalletRecord>,
+    categorySuggestions: List<String>,
     isSubmitting: Boolean,
     onDismiss: () -> Unit,
     onSubmit: (String, Double, String, String) -> Unit
@@ -681,6 +685,13 @@ private fun AddTransactionDialog(
     var category by remember(type) { mutableStateOf("") }
     var selectedWalletId by remember(type, wallets) { mutableStateOf(wallets.firstOrNull()?.id.orEmpty()) }
     var validationMessage by remember(type) { mutableStateOf<String?>(null) }
+    val trimmedCategory = category.trim()
+    val filteredCategorySuggestions = remember(categorySuggestions, trimmedCategory) {
+        categorySuggestions.filteredForCategoryQuery(trimmedCategory)
+    }
+    val hasExactCategoryMatch = remember(categorySuggestions, trimmedCategory) {
+        categorySuggestions.any { it.equals(trimmedCategory, ignoreCase = true) }
+    }
 
     AlertDialog(
         onDismissRequest = { if (!isSubmitting) onDismiss() },
@@ -708,6 +719,48 @@ private fun AddTransactionDialog(
                         onValueChange = { category = it },
                         label = "Category"
                     )
+                    if (categorySuggestions.isNotEmpty()) {
+                        Text(
+                            text = if (trimmedCategory.isBlank()) {
+                                if (type == MoneyEntryType.INCOME) {
+                                    "Latest income categories"
+                                } else {
+                                    "Latest expense categories"
+                                }
+                            } else if (type == MoneyEntryType.INCOME) {
+                                "Matching income categories"
+                            } else {
+                                "Matching expense categories"
+                            },
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                        if (filteredCategorySuggestions.isNotEmpty()) {
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                filteredCategorySuggestions.forEach { suggestion ->
+                                    SelectChip(
+                                        label = suggestion,
+                                        selected = trimmedCategory.equals(suggestion, ignoreCase = true),
+                                        onClick = { category = suggestion }
+                                    )
+                                }
+                            }
+                        } else if (trimmedCategory.isNotBlank() && !hasExactCategoryMatch) {
+                            Text(
+                                text = "No saved category matches \"$trimmedCategory\". Save to create it as a new ${type.name.lowercase()} category.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = DashboardTheme.colors.textSecondary
+                            )
+                        }
+                    } else if (trimmedCategory.isNotBlank()) {
+                        Text(
+                            text = "This will create your first ${type.name.lowercase()} category.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = DashboardTheme.colors.textSecondary
+                        )
+                    }
                     Text(
                         text = "Wallet",
                         style = MaterialTheme.typography.labelLarge
@@ -971,4 +1024,26 @@ private fun Double.toPlainMoneyString(): String {
 
 private fun Date.formatMoneyDate(): String {
     return SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault()).format(this)
+}
+
+private fun List<MoneyTransactionRecord>.categorySuggestionsFor(type: MoneyEntryType): List<String> {
+    return this.asSequence()
+        .filter { it.type == type }
+        .map { it.category.trim() }
+        .filter { it.isNotBlank() }
+        .distinctBy { it.lowercase() }
+        .take(8)
+        .toList()
+}
+
+private fun List<String>.filteredForCategoryQuery(query: String): List<String> {
+    if (query.isBlank()) return take(8)
+
+    val normalizedQuery = query.lowercase()
+    return this.asSequence()
+        .filter { suggestion ->
+            suggestion.lowercase().contains(normalizedQuery)
+        }
+        .take(8)
+        .toList()
 }
