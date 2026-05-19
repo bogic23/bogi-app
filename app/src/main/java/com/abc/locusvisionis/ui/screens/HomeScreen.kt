@@ -37,7 +37,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.abc.locusvisionis.data.bible.BibleContent
+import com.abc.locusvisionis.data.bible.BibleContentEnglish
 import com.abc.locusvisionis.data.bible.BibleContentItem
 import com.abc.locusvisionis.data.database.AppDatabase
 import com.abc.locusvisionis.data.firebase.MoneyDashboardState
@@ -78,7 +78,7 @@ fun HomeScreen(
     val database = remember(context) { AppDatabase.getDatabase(context) }
     val reflectionDao = remember(database) { database.reflectionDao() }
     val reflections by reflectionDao.observeAll().collectAsState(initial = emptyList())
-    val bibleVerses = remember { BibleContent.verses }
+    val bibleVerses = remember { BibleContentEnglish.verses }
     val latestLocalReflection = reflections.firstOrNull()
     val continueReadingVerse = remember(bibleVerses) {
         bibleVerses.firstOrNull { !it.isFavorite } ?: bibleVerses.firstOrNull()
@@ -354,7 +354,7 @@ private fun Reflection.toQuickReflectionSummary(): String {
 }
 
 private fun BibleContentItem.toQuickVerseSummary(): String {
-    val preview = englishText.trim()
+    val preview = text.trim()
     val shortText = if (preview.length <= 68) preview else "${preview.take(65).trimEnd()}..."
     return "$reference - $shortText"
 }

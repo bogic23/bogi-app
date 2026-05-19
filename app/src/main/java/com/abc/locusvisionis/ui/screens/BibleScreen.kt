@@ -45,7 +45,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.abc.locusvisionis.data.bible.BibleContent
+import com.abc.locusvisionis.data.bible.BibleContentEnglish
+import com.abc.locusvisionis.data.bible.BibleContentIndonesia
 import com.abc.locusvisionis.data.bible.BibleContentItem
 import com.abc.locusvisionis.ui.theme.DashboardTheme
 
@@ -59,7 +60,12 @@ fun BibleScreen() {
     val appColors = DashboardTheme.colors
     var searchQuery by remember { mutableStateOf("") }
     var selectedLanguage by remember { mutableStateOf(BibleLanguage.ENGLISH) }
-    val bibleList = remember { BibleContent.verses }
+    val bibleList = remember(selectedLanguage) {
+        when (selectedLanguage) {
+            BibleLanguage.ENGLISH -> BibleContentEnglish.verses
+            BibleLanguage.INDONESIAN -> BibleContentIndonesia.verses
+        }
+    }
     val verseOfTheDay = bibleList.firstOrNull()
     val filteredVerses = remember(searchQuery, selectedLanguage, bibleList) {
         val keyword = searchQuery.trim()
@@ -69,7 +75,7 @@ fun BibleScreen() {
             bibleList.filter { item ->
                 item.book.contains(keyword, ignoreCase = true) ||
                     item.reference.contains(keyword, ignoreCase = true) ||
-                    item.getText(selectedLanguage).contains(keyword, ignoreCase = true)
+                    item.text.contains(keyword, ignoreCase = true)
             }
         }
     }
@@ -109,7 +115,7 @@ fun BibleScreen() {
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "\"${verse.getText(selectedLanguage)}\"",
+                        text = "\"${verse.text}\"",
                         style = MaterialTheme.typography.bodyLarge,
                         color = Color.White,
                         textAlign = TextAlign.Center
@@ -137,7 +143,7 @@ fun BibleScreen() {
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "Edit your verses in `data/bible/BibleContent.kt`, then search by book, reference, or verse text here.",
+            text = "Edit your verses in `data/bible/BibleContentEnglish.kt` or `data/bible/BibleContentIndonesia.kt`, then search by book, reference, or verse text here.",
             style = MaterialTheme.typography.bodyMedium,
             color = appColors.textSecondary
         )
@@ -305,7 +311,7 @@ fun BibleBookCard(
             if (isExpanded) {
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
-                    text = book.getText(selectedLanguage),
+                    text = book.text,
                     style = MaterialTheme.typography.bodyLarge,
                     color = appColors.textSecondary
                 )
@@ -327,13 +333,6 @@ fun BibleBookCard(
                 }
             }
         }
-    }
-}
-
-private fun BibleContentItem.getText(language: BibleLanguage): String {
-    return when (language) {
-        BibleLanguage.ENGLISH -> englishText
-        BibleLanguage.INDONESIAN -> indonesianText
     }
 }
 
